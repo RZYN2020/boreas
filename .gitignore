@@ -25,6 +25,9 @@ stan.html
 .dir-locals.el
 *_flymake.hs
 
+# Vscode-related
+.vscode
+
 # Vim-related
 *.swp
 *.tag
