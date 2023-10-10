@@ -1,25 +1,37 @@
 module Main (main) where
 
-import Data.Set
-import Nfa (Nfa (..), Trans (..), fromReg, matchNfa, runNfa)
-import Reg (Reg (..))
+import Nfa (matchNfa, fromReg)
+import Reg (Reg (..), parseReg)
 import Test.Hspec
+import Debug.Trace
 
-re = Alt (Con (Literal 'a') (Literal 'b')) (Star (Literal 'c'))
 
 main :: IO ()
 main = hspecTest
 
+
+-- type Pattern = String
+type Pattern = Reg Char
+
+type TestCase = (Pattern, String, Bool)
+test_cases :: [TestCase]
+test_cases = [
+  (Con (Literal 'a') (Literal 'b'), "ab", True),
+  (Star (Literal 'a'), "aaaaa", True),
+  (Alt (Literal 'a') (Literal 'b'), "b", True),
+  (Con (Literal 'a') (Star (Literal 'b')), "abbbc", False)
+  ]
+
 hspecTest :: IO ()
 hspecTest = hspec $ do
-  describe "Reg" $ do
-    it "can show regex expressions" $ do
-      show re `shouldBe` "(('a''b')|'c'*)"
-    -- it "convert regex to NFA" $ do
-    --     fromReg re `shouldBe` ...
-    it "nfa match string" $ do
-      matchNfa (fromReg re) "ab" `shouldBe` True
-    it "nfa match string2" $ do
-      matchNfa (fromReg re) "ccccc" `shouldBe` True
-    it "nfa match string3" $ do
-      matchNfa (fromReg re) "cccccd" `shouldBe` False
+  testEngine "NFA" matchNfa Nfa.fromReg test_cases
+
+testEngine :: String -> (a -> String -> Bool) -> (Reg Char -> a) -> [TestCase] -> SpecWith ()
+testEngine name match from cases =
+  describe (name ++ " Test") $
+    mapM_ (test name match from) cases
+
+test :: String -> (a -> String -> Bool) -> (Reg Char -> a) -> TestCase -> SpecWith ()
+test name match from (pat, str, ans) =
+  it (name ++ " match " ++ show pat) $
+    match (from pat) str `shouldBe` ans
