@@ -1,97 +1,82 @@
 {-# LANGUAGE LambdaCase #-}
 
 module Nfa where
-import Data.Set
-import Reg
 
-data Trans st c
-  = EpiTrans st st
-  | OneTrans st c st
+import Data.Set
+  ( Set,
+    empty,
+    foldl,
+    foldl',
+    fromList,
+    insert,
+    intersection,
+    map,
+    singleton,
+    union,
+  )
+import Reg (Reg (..))
+
+-- a for state; b for charactor
+data Trans a b
+  = EpiTrans a a
+  | OneTrans a b a
   deriving (Ord, Eq, Show)
 
-data Nfa st c = NFA
-  { alphabet :: Set c,
-    states :: Set st,
-    initial :: st,
-    final :: Set st,
-    transitions :: Set (Trans st c)
+data Nfa a b = NFA
+  { alphabet :: Set b,
+    states :: Set a,
+    initial :: a,
+    final :: Set a,
+    transitions :: Set (Trans a b)
   }
   deriving (Eq, Show)
 
-matchNfa :: (Ord st, Eq c) => Nfa st c -> [c] -> Bool
+matchNfa :: (Ord a, Eq b) => Nfa a b -> [b] -> Bool
 matchNfa nfa cs =
-  not (Data.Set.null (intersection rs fi))
+  not $ null $ intersection rs fi
   where
     rs = runNfa nfa cs
     fi = final nfa
 
-runNfa :: (Ord st, Eq c) => Nfa st c -> [c] -> Set st
+runNfa :: (Ord a, Eq b) => Nfa a b -> [b] -> Set a
 runNfa nfa = Prelude.foldl (step nfa) (closure nfa $ singleton $ initial nfa)
 
-step :: (Ord st, Eq c) => Nfa st c -> Set st -> c -> Set st
-step nfa s ch = closure nfa $ oneMove nfa s ch
+step :: (Ord a, Eq b) => Nfa a b -> Set a -> b -> Set a
+step nfa sts c = closure nfa $ oneMove nfa sts c
 
-oneMove :: (Ord st, Eq c) => Nfa st c -> Set st -> c -> Set st
-oneMove nfa sts ch =
-  Data.Set.foldl' (\acc s -> acc `union` nextof s ch) empty sts
+oneMove :: (Ord a, Eq b) => Nfa a b -> Set a -> b -> Set a
+oneMove nfa sts c =
+  Data.Set.foldl' (\acc s -> acc `union` nextof s c) empty sts
   where
-    transof state ch' =
-      Data.Set.filter
+    nextof st c' =
+      mapMaybe
         ( \case
-            OneTrans s c _ | s == state, c == ch' -> True
-            _ -> False
+            OneTrans stt ct stt' | stt == st, ct == c' -> Just stt'
+            _ -> Nothing
         )
         $ transitions nfa
-    nextof state ch' =
-      Data.Set.map
-        ( \case
-            OneTrans _ _ s' -> s'
-            _ -> undefined
-        )
-        $ transof state ch'
-
-fixPoint :: Eq t => (t -> t) -> t -> t
-fixPoint f x
-  | x == r = r
-  | otherwise = fixPoint f r
-  where
-    r = f x
 
 -- closure to to a limit
-closure :: (Ord st) => Nfa st c -> Set st -> Set st
+closure :: (Ord a) => Nfa a b -> Set a -> Set a
 closure nfa =
-  fixPoint iter
+  fixPoint go
   where
-    eptransof state =
-      Data.Set.filter
+    epnextof st =
+      mapMaybe
         ( \case
-            EpiTrans s _ | s == state -> True
-            _ -> False
+            EpiTrans stt stt' | stt == st -> Just stt'
+            _ -> Nothing
         )
         $ transitions nfa
-    epnextof state =
-      Data.Set.map
-        ( \case
-            EpiTrans _ s' -> s'
-            _ -> undefined
-        )
-        $ eptransof state
-    iter set =
+    go set =
       Data.Set.foldl' (\acc s' -> acc `union` epnextof s') empty set
         `union` set
 
 -- Thompson’s Algorithm
-fromReg :: (Ord c) => Reg c -> Nfa Int c
+fromReg :: (Ord b) => Reg b -> Nfa Int b
 fromReg Empty = NFA empty (fromList [0, 1]) 0 (singleton 1) empty
 fromReg Epsilon = NFA empty (fromList [0, 1]) 0 (singleton 1) (singleton $ EpiTrans 0 1)
-fromReg (Literal ch) =
-  NFA
-    { alphabet = singleton ch,
-      states = fromList [0, 1],
-      initial = 0,
-      final = singleton 1,
-      transitions = singleton $ OneTrans 0 ch 1
-    }
+fromReg (Literal ch) = NFA (singleton ch) (fromList [0, 1]) 0 (singleton 1) (singleton $ OneTrans 0 ch 1)
 fromReg (Con r r') =
   NFA
     { alphabet = a `union` a',
@@ -148,6 +133,9 @@ fromReg (Star r) =
     (NFA a s _ _ t) = fromReg r
     l = length s
 
+
+
+-- Just two instances ... no need to use typeclass to represent them in the same renum
 renum :: Set Int -> Int -> Set Int
 renum s i = Data.Set.map (+ i) s
 
@@ -159,3 +147,21 @@ renumTrans s i =
         OneTrans st ch st' -> OneTrans (st + i) ch (st' + i)
     )
     s
+
+--- Helper Functions
+-- https://www.reddit.com/r/haskell/comments/2090x3/ask_rhaskell_why_is_there_no_functor_instance_for/
+mapMaybe :: (Ord b) => (a -> Maybe b) -> Set a -> Set b
+mapMaybe f =
+  Data.Set.foldl
+    ( \mp x -> case f x of
+        Just x' -> insert x' mp
+        Nothing -> mp
+    )
+    empty
+
+fixPoint :: (Eq a) => (a -> a) -> a -> a
+fixPoint f x
+  | x == r = r
+  | otherwise = fixPoint f r
+  where
+    r = f x
