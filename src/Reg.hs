@@ -1,7 +1,8 @@
-module Reg (Reg (..), parseReg) where
+module Reg(Reg(..), parseReg) where
 
-import Control.Applicative
-import Text.Parsec (anyChar, between, char, optionMaybe, parse, try)
+import Control.Applicative ((<|>))
+import Text.Parsec (parse, char, string, many1, letter)
+import Text.Parsec.Expr
 import Text.Parsec.String (Parser)
 
 data Reg c
@@ -21,10 +22,39 @@ showReg (Con r r') = "(" ++ showReg r ++ showReg r' ++ ")"
 showReg (Alt r r') = "(" ++ showReg r ++ "|" ++ showReg r' ++ ")"
 showReg (Star r) = showReg r ++ "*"
 
--- Parser for a regular expression
-reg :: Parser (Reg Char)
-reg = undefined
 
+parens :: Parser (Reg Char) -> Parser (Reg Char)
+parens p = do
+    _ <- char '('
+    r <- p
+    _ <- char ')'
+    return r
+
+epsilon :: Parser (Reg Char)
+epsilon = do
+  return Epsilon
+
+reservedOp :: String -> Parser ()
+reservedOp s = do
+  _ <- string s
+  return ()
+
+manyLiteral :: Parser (Reg Char)
+manyLiteral =  do
+      cs <- many1 letter
+      return $ foldl1 Con $ map Literal cs
+
+reg :: Parser (Reg Char)
+reg = buildExpressionParser table term
+  where
+    term = parens reg <|> manyLiteral <|> epsilon
+    table =
+      [ [postfix "*" Star],
+        [binary "-" Con AssocLeft],
+        [binary "|" Alt AssocLeft]
+      ]
+    binary name fun = Infix (do reservedOp name; return fun)
+    postfix name fun = Postfix (do reservedOp name; return fun)
 
 parseReg :: String -> Reg Char
 parseReg s = case parse reg "" s of

@@ -5,7 +5,7 @@ import Control.Applicative
     Applicative (liftA2),
   )
 
-import Reg
+import Reg (Reg (..), parseReg)
 import Nfa
 
 newtype RegEng tok res = RegEng { match :: [tok] -> Maybe (res, [tok])}
