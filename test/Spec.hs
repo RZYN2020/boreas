@@ -4,8 +4,6 @@ import Nfa (matchNfa, fromReg)
 import Dfa (matchDfa, fromNfa, minimize)
 import Reg (Reg (..), parseReg)
 import Test.Hspec
-import Debug.Trace
-
 
 main :: IO ()
 main = hspecTest
@@ -17,10 +15,23 @@ type Pattern = String
 type TestCase = (Pattern, String, Bool)
 test_cases :: [TestCase]
 test_cases = [
-  ("ab", "ab", True),
+  ("abc", "abc", True),
   ("a*", "aaaaa", True),
+  ("a-a*", "aaaaa", True),
   ("a|b", "b", True),
-  ("a(b*)", "abbbc", False)
+  ("(ab)*", "ababab", True),
+  ("a(b|c)*d", "abcbccd", False),
+  ("a*", "", True),
+  ("a|b", "c", False),
+  ("(a|b)-(a|c)", "ac", True),
+  ("(a|b)*-c", "aaaac", True),
+  ("a-(b|c)-d", "acd", True),
+  ("(a|b)-(c|d)", "bd", True),
+  ("a-(bcd)*-e", "abcdbcde", True),
+  ("(ab|cd)*", "abcdabcdab", True),
+  ("a-(b*-c)*-d", "abcd", True),
+  ("(xyz)*", "xyzxyzxyz", True),
+  ("a-(bcd)*-e", "abcde", True)
   ]
 
 hspecTest :: IO ()

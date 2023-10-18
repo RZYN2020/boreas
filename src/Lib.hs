@@ -1,14 +1,11 @@
-module Lib (Reg (..), Nfa(..)) where
+module Lib where
 
-import Control.Applicative
-  ( Alternative (empty, (<|>)),
-    Applicative (liftA2),
-  )
-
-import Reg (Reg (..), parseReg)
+import Reg
 import Nfa
+import Dfa
 
-newtype RegEng tok res = RegEng { match :: [tok] -> Maybe (res, [tok])}
+
+-- newtype RegEng tok res = RegEng { match :: [tok] -> Maybe (res, [tok])}
 
 -- instance Functor (RegEng t) where
 --   fmap f r = RegEng $
