@@ -1,8 +1,12 @@
-module Reg(Reg(..), parseReg) where
+module Reg (Reg (..), parseReg) where
 
 import Control.Applicative ((<|>))
-import Text.Parsec (parse, char, string, many1, letter)
+import Text.Parsec (char, letter, many1, parse, string)
 import Text.Parsec.Expr
+  ( Assoc (AssocLeft),
+    Operator (Infix, Postfix),
+    buildExpressionParser,
+  )
 import Text.Parsec.String (Parser)
 
 data Reg c
@@ -22,13 +26,12 @@ showReg (Con r r') = "(" ++ showReg r ++ showReg r' ++ ")"
 showReg (Alt r r') = "(" ++ showReg r ++ "|" ++ showReg r' ++ ")"
 showReg (Star r) = showReg r ++ "*"
 
-
 parens :: Parser (Reg Char) -> Parser (Reg Char)
 parens p = do
-    _ <- char '('
-    r <- p
-    _ <- char ')'
-    return r
+  _ <- char '('
+  r <- p
+  _ <- char ')'
+  return r
 
 epsilon :: Parser (Reg Char)
 epsilon = do
@@ -40,9 +43,9 @@ reservedOp s = do
   return ()
 
 manyLiteral :: Parser (Reg Char)
-manyLiteral =  do
-      cs <- many1 letter
-      return $ foldl1 Con $ map Literal cs
+manyLiteral = do
+  cs <- many1 letter
+  return $ foldl1 Con $ map Literal cs
 
 reg :: Parser (Reg Char)
 reg = buildExpressionParser table term
@@ -50,7 +53,7 @@ reg = buildExpressionParser table term
     term = parens reg <|> manyLiteral <|> epsilon
     table =
       [ [postfix "*" Star],
-        [binary "-" Con AssocLeft],
+        [binary "" Con AssocLeft],
         [binary "|" Alt AssocLeft]
       ]
     binary name fun = Infix (do reservedOp name; return fun)

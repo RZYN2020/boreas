@@ -3,6 +3,24 @@
 module Dfa (Dfa (..), minimize, fromNfa, matchDfa, fromNfa') where
 
 import Data.Set
+  ( Set,
+    delete,
+    empty,
+    filter,
+    findIndex,
+    foldl,
+    fromList,
+    intersection,
+    map,
+    member,
+    null,
+    partition,
+    singleton,
+    size,
+    toList,
+    union,
+    (\\),
+  )
 import Nfa (Nfa (..), closure, fixPoint, step)
 
 -- a for state; b for charactor

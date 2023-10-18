@@ -133,8 +133,6 @@ fromReg (Star r) =
     (NFA a s _ _ t) = fromReg r
     l = length s
 
-
-
 -- Just two instances ... no need to use typeclass to represent them in the same renum
 renum :: Set Int -> Int -> Set Int
 renum s i = Data.Set.map (+ i) s
